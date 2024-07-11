@@ -1,3 +1,6 @@
+# Nama : ARDIANSYAH YASYIFA
+# NIM : A11.2017.10120
+
 import itertools
 import pandas as pd
 import numpy as np
@@ -8,10 +11,11 @@ import streamlit as st
 import time
 import pickle
 
-# Load and preprocess the data
+# Membaca Data
 with open("hungarian.data", encoding='Latin1') as file:
     lines = [line.strip() for line in file]
 
+# Menelaah Data
 data = itertools.takewhile(
     lambda x: len(x) == 76,
     (' '.join(lines[i:(i + 10)]).split() for i in range(0, len(lines), 10))
@@ -22,8 +26,10 @@ df = df.iloc[:, :-1]
 df = df.drop(df.columns[0], axis=1)
 df = df.astype(float)
 
+# Validasi data untuk data -9.0 Merupakan nilai Null sehingga harus disesuaikan
 df.replace(-9.0, np.NaN, inplace=True)
 
+# Mapping data sesuai dengan data yang ingin digunakan dalam hal ini menggunakan 14 Data
 df_selected = df.iloc[:, [1, 2, 7, 8, 10, 14, 17, 30, 36, 38, 39, 42, 49, 56]]
 
 column_mapping = {
@@ -54,6 +60,7 @@ for column in df_selected.columns:
     else:
         df_selected[column].fillna(df_selected[column].mode()[0], inplace=True)
 
+# Melakukan pembersihan data, disini menghapus beberapa data yang tidak digunakan
 columns_to_drop = ['ca', 'slope', 'thal']
 df_selected = df_selected.drop(columns_to_drop, axis=1)
 df_clean = df_selected.copy()
@@ -66,48 +73,55 @@ y = df_clean['target']
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
-# Applying SMOTE
+# Penggunaan SMOTE
 smote = SMOTE(random_state=42)
 X_resampled, y_resampled = smote.fit_resample(X_scaled, y)
 
-# Load the model
+# Load model
 model = pickle.load(open("grid_rf.pkl", 'rb'))
 
-# Predict and calculate accuracy
+# Prediksi dan kalkulasi akurasi
 y_pred = model.predict(X_resampled)
 accuracy = accuracy_score(y_resampled, y_pred)
 accuracy = round((accuracy * 100), 2)
 
-# Reverse scaling to get the original distribution of data
+# Mengembalikan scaling yang di dapat dari distribusi data original
 X_original = scaler.inverse_transform(X_resampled)
 
-# Convert the numpy array back to a DataFrame, ensuring the column names match the original dataset
+
+# Konversi ke array numpy kembali ke sebuah data frame, dan memastikan kolom nama sesuai aslinya pada dataset
 feature_columns = X.columns  # Assuming X was a DataFrame before scaling
 df_final = pd.DataFrame(X_original, columns=feature_columns)
 
-# Add the 'target' column to the DataFrame
+
+# Menambahkan kolom "Target" ke dataframe
 df_final['target'] = y_resampled
 
 # ========================================================================================================================================================================================
 
-# STREAMLIT
+# Membuat STREAMLIT
 st.set_page_config(
   page_title = "Hungarian Heart Disease",
   page_icon = ":head:"
 )
 
+# Judul
 st.title("Hungarian Heart Disease")
 st.write("")
 
+# Nama Tab
 tab1, tab2 = st.tabs(["Single-predict", "Multi-predict"])
 
+# Mengatur Sidebar
 with tab1:
   st.sidebar.header("**User Input** Sidebar")
 
+# Form Umur
   age = st.sidebar.number_input(label=":green[**Age**]", min_value=df_final['age'].min(), max_value=df_final['age'].max())
   st.sidebar.write(f":green[Min] value: :green[**{df_final['age'].min()}**], :red[Max] value: :red[**{df_final['age'].max()}**]")
   st.sidebar.write("")
 
+# Form Jenis Kelamin
   sex_sb = st.sidebar.selectbox(label=":green[**Sex**]", options=["Male", "Female"])
   st.sidebar.write("")
   st.sidebar.write("")
@@ -118,6 +132,7 @@ with tab1:
   # -- Value 0: Female
   # -- Value 1: Male
 
+# Form Jenis Sakit pada dada
   cp_sb = st.sidebar.selectbox(label=":green[**Chest pain type**]", options=["Typical angina", "Atypical angina", "Non-anginal pain", "Asymptomatic"])
   st.sidebar.write("")
   st.sidebar.write("")
@@ -134,14 +149,17 @@ with tab1:
   # -- Value 3: non-anginal pain
   # -- Value 4: asymptomatic
 
+# Form Tekanan Darah
   trestbps = st.sidebar.number_input(label=":green[**Resting blood pressure** (in mm Hg on admission to the hospital)]", min_value=df_final['trestbps'].min(), max_value=df_final['trestbps'].max())
   st.sidebar.write(f":green[Min] value: :green[**{df_final['trestbps'].min()}**], :red[Max] value: :red[**{df_final['trestbps'].max()}**]")
   st.sidebar.write("")
 
+# Form Kolesterol
   chol = st.sidebar.number_input(label=":green[**Serum cholestoral** (in mg/dl)]", min_value=df_final['chol'].min(), max_value=df_final['chol'].max())
   st.sidebar.write(f":green[Min] value: :green[**{df_final['chol'].min()}**], :red[Max] value: :red[**{df_final['chol'].max()}**]")
   st.sidebar.write("")
 
+# Form Gula darah
   fbs_sb = st.sidebar.selectbox(label=":green[**Fasting blood sugar > 120 mg/dl?**]", options=["False", "True"])
   st.sidebar.write("")
   st.sidebar.write("")
@@ -151,6 +169,8 @@ with tab1:
     fbs = 1
   # -- Value 0: false
   # -- Value 1: true
+
+# Form electrocardiographic
 
   restecg_sb = st.sidebar.selectbox(label=":green[**Resting electrocardiographic results**]", options=["Normal", "Having ST-T wave abnormality", "Showing left ventricular hypertrophy"])
   st.sidebar.write("")
@@ -165,10 +185,12 @@ with tab1:
   # -- Value 1: having ST-T wave abnormality (T wave inversions and/or ST  elevation or depression of > 0.05 mV)
   # -- Value 2: showing probable or definite left ventricular hypertrophy by Estes' criteria
 
+# Maksimum detak jantung
   thalach = st.sidebar.number_input(label=":green[**Maximum heart rate achieved**]", min_value=df_final['thalach'].min(), max_value=df_final['thalach'].max())
   st.sidebar.write(f":green[Min] value: :green[**{df_final['thalach'].min()}**], :red[Max] value: :red[**{df_final['thalach'].max()}**]")
   st.sidebar.write("")
 
+# Hasil Angina setelah olahraga
   exang_sb = st.sidebar.selectbox(label=":green[**Exercise induced angina?**]", options=["No", "Yes"])
   st.sidebar.write("")
   st.sidebar.write("")
@@ -179,10 +201,12 @@ with tab1:
   # -- Value 0: No
   # -- Value 1: Yes
 
+# Depresi ST disebabkan oleh olahraga dibandingkan istirahat
   oldpeak = st.sidebar.number_input(label=":green[**ST depression induced by exercise relative to rest**]", min_value=df_final['oldpeak'].min(), max_value=df_final['oldpeak'].max())
   st.sidebar.write(f":green[Min] value: :green[**{df_final['oldpeak'].min()}**], :red[Max] value: :red[**{df_final['oldpeak'].max()}**]")
   st.sidebar.write("")
 
+# Mengambil data dari form yang di isi
   data = {
     'Age': age,
     'Sex': sex_sb,
@@ -196,6 +220,7 @@ with tab1:
     'ST depression': oldpeak,
   }
 
+# Menampilkan ringkasan input user
   preview_df = pd.DataFrame(data, index=['input'])
 
   st.header("User Input as DataFrame")
@@ -205,21 +230,22 @@ with tab1:
   st.dataframe(preview_df.iloc[:, 6:])
   st.write("")
 
+# Menampilkan Hasil
   result = ":green[-]"
 
+# Tombol Prediksi
   predict_btn = st.button("**Predict**", type="primary")
 
   st.write("")
+
+  # Proses Prediksi
   if predict_btn:
-    # Collect inputs into a dataframe
     input_df = pd.DataFrame([[
         age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak
     ]], columns=['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 'thalach', 'exang', 'oldpeak'])
     
-    # Standardize the inputs
     input_df_scaled = scaler.transform(input_df)
     
-    # Make prediction
     prediction = model.predict(input_df_scaled)[0]
 
     bar = st.progress(0)
@@ -250,6 +276,7 @@ with tab1:
   st.subheader("Prediction:")
   st.subheader(result)
 
+# Prediksi menggunakan multiple data dengan mengupload file CSV
 with tab2:
   st.header("Predict multiple data:")
 
